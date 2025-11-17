@@ -6,6 +6,7 @@ ret, prev_frame =cap.read()
 prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
 
+trail = None
 while True:
     ret, frame = cap.read()
     
@@ -19,8 +20,6 @@ while True:
     frame_diff = cv2.absdiff(prev_gray, gray)
     _, thresh = cv2.threshold(frame_diff, 25, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    trail = None
 
     for contour in contours:
         if cv2.contourArea(contour) < 500:
@@ -39,18 +38,24 @@ while True:
 
         thickness = max(1, min(10, int(cv2.contourArea(contour)/ 2000)))
 
-
-
         overlay = frame.copy()
-        alpha = 0.3
+
+        cx = x + w// 2
+        cy = y + h// 2
+
+        if 'prev_centroid' in globals():
+            px, py = prev_centroid
+            cv2.arrowedLine(frame, (px, py), (cx, cy), (255,0,0), 2)
+        
+        prev_centroid = (cx, cy)
 
         cv2.rectangle(frame, (x,y), (x + w, y + h), color, thickness)
-        cv2.addWeighted(overlay, alpha, frame, 1- alpha, 0, frame)
+        cv2.addWeighted(overlay, 0.3, frame, 0.7, 0, frame)
         
     if trail is None:
         trail = thresh.copy().astype('float')
     else:
-        cv2.accumulateProduct(thresh, trail, 0.1)
+        cv2.accumulateWeighted(thresh, trail, 0.1)
 
     trail_display = cv2.convertScaleAbs(trail)
     combined = cv2.hconcat([frame, cv2.cvtColor(trail_display, cv2.COLOR_GRAY2BGR)])
