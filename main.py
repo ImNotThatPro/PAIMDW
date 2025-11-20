@@ -3,14 +3,12 @@ import math
 
 cap = cv2.VideoCapture(0)
 
-# ---------- PREPARE WINDOWS (must be before loop) ----------
 cv2.namedWindow("Tracking", cv2.WINDOW_NORMAL)
 cv2.namedWindow("Trail", cv2.WINDOW_NORMAL)
 cv2.namedWindow("Heatmap", cv2.WINDOW_NORMAL)
 cv2.namedWindow("Combined", cv2.WINDOW_NORMAL)
 cv2.namedWindow("Cinematic", cv2.WINDOW_NORMAL)
 
-# ---------- INITIAL FRAME ----------
 ret, prev_frame = cap.read()
 prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
 prev_gray = cv2.GaussianBlur(prev_gray, (21, 21), 0)
@@ -19,7 +17,7 @@ trail = None
 prev_centroid = None
 heatmap = None
 
-# ---------- MAIN LOOP ----------
+
 while True:
     ret, frame = cap.read()
     if not ret:
@@ -33,7 +31,6 @@ while True:
     _, thresh = cv2.threshold(frame_diff, 25, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # ---------- HEATMAP ACCUMULATION ----------
     if heatmap is None:
         heatmap = thresh.copy().astype('float')
     else:
@@ -42,7 +39,6 @@ while True:
     heatmap_display = cv2.convertScaleAbs(heatmap)
     colored_heatmap = cv2.applyColorMap(heatmap_display, cv2.COLORMAP_JET)
 
-    # ---------- TRACKING + SPEED ----------
     fastest_speed = -1
     fastest_box = None
 
@@ -103,7 +99,6 @@ while True:
         cv2.putText(frame, 'Fastest', (fx, fy - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-    # ---------- TRAIL MAP ----------
     if trail is None:
         trail = thresh.copy().astype('float')
     else:
@@ -112,7 +107,6 @@ while True:
     trail_display = cv2.convertScaleAbs(trail)
     trail_bgr = cv2.cvtColor(trail_display, cv2.COLOR_GRAY2BGR)
 
-    # ---------- SHOW ALL PANELS ----------
     final_display = cv2.addWeighted(colored_heatmap, 0.4,frame, 0.6,0)
     cv2.imshow("Tracking", final_display)
     cv2.imshow("Trail", trail_bgr)
