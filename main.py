@@ -17,6 +17,8 @@ trail = None
 prev_centroid = None
 heatmap = None
 
+trackers = {}
+next_id = 0
 
 while True:
     ret, frame = cap.read()
@@ -65,26 +67,51 @@ while True:
 
         cx = x + w // 2
         cy = y + h // 2
+        centroid = (cx,cy)
 
-        # arrow movement
-        if prev_centroid is not None:
-            px, py = prev_centroid
-            cv2.arrowedLine(frame, (px, py), (cx, cy), (255, 0, 0), 2)
+        assigned_id = None
+        min_dist = 999999
 
-        # speed
-        speed = 0
-        if prev_centroid is not None:
-            px, py = prev_centroid
-            dx = cx - px
-            dy = cy - py
-            speed = math.sqrt(dx * dx + dy * dy)
+        for obj_id, data in trackers.items():
+            px, py = data['prev_centroid']
+            dist = math.hypot(cx-px,cy-py)
+
+            if dist < min_dist and dist<50:
+                min_dist=dist
+                assigned_id = obj_id
+        if assigned_id is None:
+            assigned_id = next_id
+            trackers[assigned_id] = {
+                'prev_centroid': centroid,
+                'color': (int(math.sin(next_id)* 127 + 128),
+                        int(math.cos(next_id)*127 + 128),
+                        200),
+                'speed': 0
+            }
+            next_id +=1
+
+        px,py = trackers[assigned_id]['prev_centroid']
+        dx = cx-px
+        dy = cy-py
+        speed = math.sqrt(dx*dx + dy*dy)
+        trackers[assigned_id]['speed'] = speed
+        trackers[assigned_id]['prev_centroid'] = centroid
+
+        if min_dist< 50:
+            cv2.arrowedLine(frame,(px,py),(cx,cy),trackers[assigned_id]['color'],2)
+        cv2.putText(frame, f'ID{assigned_id} | {speed:.1f}',
+                    (x,y -10),
+                    cv2.FONT_HERSHEY_SIMPLEX,0.6,
+                    trackers[assigned_id]['color'],2
+                    )
+
 
         # FIXED fastest speed selection
         if speed > fastest_speed:
             fastest_speed = speed
             fastest_box = (x, y, w, h)
 
-        prev_centroid = (cx, cy)
+
 
         cv2.putText(frame, f"Speed: {speed:.1f}", (x, y - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
